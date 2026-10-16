@@ -1,6 +1,1 @@
 
-{"name":"匿名","text":"1","time":1792126163136}
-{"name":"匿名","text":"测试","time":1792127800331,"region":"Chiba"}
-{"name":"123","text":"2","time":1792127818006,"region":"Chiba"}
-{"name":"匿名","text":"4677","time":1792129046415,"region":"Jiangxi"}
-{"name":"测试","text":"43497","time":1792129279489,"region":"江西"}
