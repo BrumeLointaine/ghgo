@@ -5,12 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-    
     <title>GitHub 文件加速下载 - Release/Raw/Gist 国内加速 | ghgo</title>
     <meta name="description" content="GitHub 文件加速下载工具，支持 Releases、Raw、Gist、源码归档加速。多节点自动测速，一键复制加速链接，解决国内 GitHub 下载慢的问题。">
     <link rel="canonical" href="https://ghgo.de5.net/">
 
-    
     <meta property="og:title" content="GitHub 文件加速下载 - ghgo">
     <meta property="og:description" content="支持 Releases、Raw、Gist 加速，多节点自动测速，一键复制加速链接。">
     <meta property="og:type" content="website">
@@ -286,6 +284,7 @@
             justify-content: space-between;
             gap: 10px;
             margin-bottom: 14px;
+            flex-wrap: wrap;
         }
 
         .nodes-title {
@@ -391,6 +390,26 @@
         }
 
         .node.recommended .node-badge { display: inline-block; }
+
+        .node-single-btn {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--muted);
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+            line-height: 1.4;
+        }
+
+        .node-single-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .node-single-btn:disabled { opacity: .5; cursor: default; }
 
         .releases {
             margin-top: 18px;
@@ -791,6 +810,9 @@
             .node-list { grid-template-columns: 1fr 1fr; }
             .asset { flex-wrap: wrap; gap: 8px; }
             .asset-name { flex: 1 1 100%; }
+            .nodes-head { flex-direction: column; align-items: stretch; }
+            .nodes-head-actions { justify-content: stretch; }
+            .nodes-head-actions .mini { flex: 1; justify-content: center; }
         }
 
         @media (max-width: 380px) {
@@ -828,7 +850,6 @@
         })()
     </script>
 
-    
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -842,7 +863,6 @@
     }
     </script>
 
-    
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -878,7 +898,6 @@
 </head>
 <body>
 
-    
     <main class="card">
         <div class="brand">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -926,7 +945,7 @@
                     <span class="nodes-title">加速节点</span>
                     <div class="nodes-head-actions">
                         <button class="mini primary" id="releases-btn" type="button">获取 Releases</button>
-                        <button class="mini" id="speed-btn" type="button">测速</button>
+                        <button class="mini" id="speed-btn" type="button">一键测速</button>
                     </div>
                 </div>
                 <div class="node-list" id="node-list"></div>
@@ -943,14 +962,9 @@
 
             <div class="releases" id="releases" hidden></div>
         </form>
-
-
     </main>
 
-    
     <section class="card card-content">
-
-        
         <section class="guestbook" id="guestbook">
             <div class="guestbook-head">
                 <span class="guestbook-title">留言板</span>
@@ -971,7 +985,6 @@
             </div>
         </section>
 
-        
         <section class="seo-content">
             <h2>GitHub 下载加速的常见场景</h2>
 
@@ -991,7 +1004,7 @@
             <div class="faq">
                 <details>
                     <summary>GitHub 下载慢怎么加速？</summary>
-                    <p>点击页面上的「测速」按钮，工具会自动测试各节点的延迟并标记最快节点。将 GitHub 原始链接粘贴到输入框，即可实时生成加速链接，点击「下载」或「复制」使用。</p>
+                    <p>点击页面上的「一键测速」按钮，工具会自动测试各节点的延迟。将 GitHub 原始链接粘贴到输入框，即可实时生成加速链接，点击「下载」或「复制」使用。</p>
                 </details>
                 <details>
                     <summary>支持哪些 GitHub 链接？</summary>
@@ -1003,13 +1016,12 @@
                 </details>
                 <details>
                     <summary>为什么有时加速链接打不开？</summary>
-                    <p>公共加速节点可能因流量过大临时不可用。建议点击「测速」切换到其他节点，或稍后重试。留言板也欢迎反馈失效节点。</p>
+                    <p>公共加速节点可能因流量过大临时不可用。建议点击「一键测速」切换到其他节点，或稍后重试。留言板也欢迎反馈失效节点。</p>
                 </details>
             </div>
         </section>
     </section>
 
-    
     <footer class="page-footer">
         <a href="mailto:admin@u0.cc.cd" class="footer-icon" title="Email">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -1022,7 +1034,6 @@
         </a>
     </footer>
 
-    
     <div id="donateModal" style="display:none; position:fixed; inset:0;
          background:rgba(0,0,0,.6); z-index:9999;
          align-items:center; justify-content:center;">
@@ -1164,28 +1175,52 @@
         const speedBtn = document.getElementById('speed-btn')
         const latEls = {}
 
+        let globalAbortController = null
+        let isTestingAll = false
+
         function renderNodes() {
             NODES.forEach(function (n) {
-                const el = document.createElement('button')
-                el.type = 'button'
+                const el = document.createElement('div')
                 el.className = 'node' + (n.value === selectedNode ? ' active' : '')
                 el.dataset.value = n.value
+                el.style.position = 'relative'
+
                 const top = document.createElement('span')
                 top.className = 'node-top'
+
                 const name = document.createElement('span')
                 name.className = 'node-name'
                 name.textContent = n.label
+
                 const dot = document.createElement('span')
                 dot.className = 'lat-dot'
                 top.append(name, dot)
+
+                const latRow = document.createElement('div')
+                latRow.style.display = 'flex'
+                latRow.style.alignItems = 'center'
+                latRow.style.justifyContent = 'space-between'
+                latRow.style.gap = '6px'
+
                 const lat = document.createElement('span')
                 lat.className = 'lat'
                 lat.textContent = '未测速'
-                const badge = document.createElement('span')
-                badge.className = 'node-badge'
-                badge.textContent = '最快'
-                el.append(top, lat, badge)
-                latEls[n.value] = { lat: lat, dot: dot }
+
+                const singleBtn = document.createElement('button')
+                singleBtn.type = 'button'
+                singleBtn.className = 'node-single-btn'
+                singleBtn.textContent = '测速'
+                singleBtn.addEventListener('click', function (e) {
+                    e.stopPropagation()
+                    singleTestNode(n.value)
+                })
+
+                latRow.append(lat, singleBtn)
+
+                el.append(top, latRow)   
+
+                latEls[n.value] = { lat: lat, dot: dot, singleBtn: singleBtn }
+
                 el.addEventListener('click', function () {
                     selectedNode = n.value
                     nodeList.querySelectorAll('.node').forEach(function (b) {
@@ -1194,13 +1229,20 @@
                     refresh()
                     if (releasesData) renderReleases()
                 })
+
                 nodeList.appendChild(el)
             })
         }
 
-        async function pingOnce(base) {
+        async function pingOnce(base, signal) {
             const ctrl = new AbortController()
             const timer = setTimeout(function () { ctrl.abort() }, PING_TIMEOUT)
+            if (signal) {
+                signal.addEventListener('abort', function () {
+                    clearTimeout(timer)
+                    ctrl.abort()
+                }, { once: true })
+            }
             const t0 = performance.now()
             try {
                 const res = await fetch(base + TEST_ASSET + '?t=' + Date.now() + '-' + (++pingSeq), {
@@ -1211,19 +1253,25 @@
                 await res.arrayBuffer()
                 return { ms: performance.now() - t0, reason: null }
             } catch (e) {
-                return { ms: null, reason: e.name === 'AbortError' ? 'timeout' : 'error' }
+                return { ms: null, reason: e.name === 'AbortError' ? 'aborted' : 'error' }
             } finally {
                 clearTimeout(timer)
             }
         }
 
-        async function measureNode(base) {
+        async function measureNode(base, signal) {
             const samples = []
             let reason = null
             for (let i = 0; i < PING_ROUNDS; i++) {
-                const r = await pingOnce(base)
+                if (signal && signal.aborted) {
+                    return { ms: null, reason: 'aborted' }
+                }
+                const r = await pingOnce(base, signal)
                 if (r.ms == null) {
                     reason = r.reason
+                    if (r.reason === 'aborted') {
+                        return { ms: null, reason: 'aborted' }
+                    }
                     if (!samples.length) break
                 } else {
                     samples.push(r.ms)
@@ -1242,6 +1290,11 @@
             const lat = parts.lat, dot = parts.dot
             lat.classList.remove('fast', 'medium', 'slow')
             dot.classList.remove('fast', 'medium', 'slow')
+            if (result.reason === 'aborted') {
+                lat.textContent = '已停止'
+                dot.classList.add('slow')
+                return
+            }
             if (result.ms == null) {
                 lat.textContent = result.reason === 'timeout' ? '连接超时' : '不可用'
                 dot.classList.add('slow')
@@ -1254,36 +1307,89 @@
             dot.classList.add(cls)
         }
 
-        async function testAll() {
-            if (speedBtn.disabled) return
-            speedBtn.disabled = true
-            speedBtn.textContent = '测速中…'
-            nodeList.querySelectorAll('.node').forEach(function (b) { b.classList.remove('recommended') })
-            const results = []
-            for (const n of NODES) {
-                const parts = latEls[n.value]
-                parts.lat.classList.remove('fast', 'medium', 'slow')
-                parts.dot.classList.remove('fast', 'medium', 'slow')
-                parts.lat.textContent = '测速中…'
-                const r = await measureNode('https://' + n.value + '/')
-                setLat(parts, r)
-                results.push({ value: n.value, ms: r.ms, reason: r.reason })
-            }
-            const ok = results.filter(function (r) { return r.ms != null })
-            if (ok.length) {
-                const best = ok.reduce(function (a, b) { return a.ms <= b.ms ? a : b })
-                const btn = nodeList.querySelector('.node[data-value="' + best.value + '"]')
-                if (btn) btn.classList.add('recommended')
-                selectedNode = best.value
-                nodeList.querySelectorAll('.node').forEach(function (b) {
-                    b.classList.toggle('active', b.dataset.value === selectedNode)
-                })
-                refresh()
-                if (releasesData) renderReleases()
-            }
-            speedBtn.disabled = false
-            speedBtn.textContent = '测速'
+        function resetNodeDisplay(value) {
+            const parts = latEls[value]
+            if (!parts) return
+            parts.lat.classList.remove('fast', 'medium', 'slow')
+            parts.dot.classList.remove('fast', 'medium', 'slow')
+            parts.lat.textContent = '等待中…'
         }
+
+        function stopAllTesting() {
+            if (globalAbortController) {
+                globalAbortController.abort()
+                globalAbortController = null
+            }
+            isTestingAll = false
+            speedBtn.disabled = false
+            speedBtn.textContent = '一键测速'
+        }
+
+        async function testAll() {
+            if (isTestingAll) return
+            isTestingAll = true
+
+            NODES.forEach(function (n) {
+                resetNodeDisplay(n.value)
+            })
+
+            speedBtn.disabled = false
+            speedBtn.textContent = '停止测速'
+
+            globalAbortController = new AbortController()
+            const signal = globalAbortController.signal
+
+            const results = []
+            try {
+                for (const n of NODES) {
+                    if (signal.aborted) break
+                    const parts = latEls[n.value]
+                    parts.lat.textContent = '测速中…'
+                    const r = await measureNode('https://' + n.value + '/', signal)
+                    if (signal.aborted) {
+                        setLat(parts, { ms: null, reason: 'aborted' })
+                        break
+                    }
+                    setLat(parts, r)
+                    results.push({ value: n.value, ms: r.ms, reason: r.reason })
+                }
+
+            } finally {
+                isTestingAll = false
+                speedBtn.disabled = false
+                speedBtn.textContent = '一键测速'
+                globalAbortController = null
+            }
+        }
+
+        async function singleTestNodeAccurate(nodeValue) {
+            if (isTestingAll) return
+            const parts = latEls[nodeValue]
+            if (!parts) return
+            const btn = parts.singleBtn
+            const oldText = btn.textContent
+            btn.disabled = true
+            btn.textContent = '…'
+            parts.lat.classList.remove('fast', 'medium', 'slow')
+            parts.dot.classList.remove('fast', 'medium', 'slow')
+            parts.lat.textContent = '测速中…'
+
+            const ctrl = new AbortController()
+            const timeoutId = setTimeout(function () { ctrl.abort() }, PING_TIMEOUT)
+            try {
+                const r = await measureNode('https://' + nodeValue + '/', ctrl.signal)
+                clearTimeout(timeoutId)
+                setLat(parts, r)
+            } catch (e) {
+                setLat(parts, { ms: null, reason: 'error' })
+            } finally {
+                clearTimeout(timeoutId)
+                btn.disabled = false
+                btn.textContent = oldText
+            }
+        }
+
+        const singleTestNode = singleTestNodeAccurate
 
         function releaseApiBases() {
             return [
@@ -1415,8 +1521,14 @@
         })
 
         renderNodes()
-        speedBtn.addEventListener('click', testAll)
-        testAll()
+
+        speedBtn.addEventListener('click', function () {
+            if (isTestingAll) {
+                stopAllTesting()
+            } else {
+                testAll()
+            }
+        })
 
         const themeToggle = document.getElementById('theme-toggle')
         if (themeToggle) {
